@@ -1,3 +1,5 @@
+.idea
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -19,3 +21,6 @@ client_secret.json
 
 # build directory
 out
+
+
+./Makefile
