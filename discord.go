@@ -1,0 +1,55 @@
+package main
+
+import (
+	"fmt"
+	"github.com/bwmarrin/discordgo"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+type BotActions struct {
+}
+
+type Bot struct {
+	session *discordgo.Session
+	actions BotActions
+}
+
+var bot Bot
+var err error
+
+func (bot *Bot) DiscordConnect() {
+	bot.session, err = discordgo.New("Bot " + token)
+
+	if err != nil {
+		return
+	}
+
+	bot.DiscordAddHandlers()
+	bot.DiscordChangeIntents()
+	bot.DiscordOpenWebsocket()
+	defer bot.DiscordCloseWebsocket()
+
+}
+
+func (bot *Bot) DiscordChangeIntents() {
+	bot.session.Identify.Intents = discordgo.IntentsAll
+}
+
+func (bot *Bot) DiscordOpenWebsocket() {
+	err := bot.session.Open()
+	if err != nil {
+		fmt.Println("error opening connection,", err)
+		return
+	}
+	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+
+	suckcock := make(chan os.Signal, 1)
+	signal.Notify(suckcock, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	<-suckcock
+}
+
+func (bot *Bot) DiscordCloseWebsocket() {
+	bot.session.Close()
+}

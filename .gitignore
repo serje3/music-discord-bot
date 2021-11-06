@@ -13,3 +13,9 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# for youtube api
+client_secret.json
+
+# build directory
+out
