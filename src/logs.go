@@ -17,6 +17,7 @@ func SetLogOutputToFile() {
 }
 
 func CloseLogFile() {
+	log.Println("----------------Log end------------------")
 	err := logfile.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -25,6 +26,12 @@ func CloseLogFile() {
 
 func SimpleFatalErrorHandler(err error) {
 	if err != nil {
-		log.Fatal(err)
+		FatalError(err)
 	}
+}
+
+func FatalError(v ...interface{}) {
+	log.Println(v...)
+	CloseLogFile()
+	os.Exit(-1)
 }

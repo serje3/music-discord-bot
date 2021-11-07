@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/bigkevmcd/go-configparser"
-	"log"
 	"os"
 )
 
@@ -22,13 +22,16 @@ func init() {
 }
 
 func main() {
-	if token != "" {
-		bot.DiscordConnect()
+	defer CloseLogFile()
+	if token == "" {
+		errorMsg := "Discord api token is not provided. Check config.cfg"
+		// stdout
+		fmt.Println(errorMsg)
+		FatalError(errorMsg)
 	} else {
-		log.Fatal("Discord api token is not provided")
+		bot.DiscordConnect()
 	}
 
-	defer CloseLogFile()
 }
 
 func setTokenFromFlag() {
@@ -50,14 +53,21 @@ func setTokenFromConfig() {
 
 	token, err = config.Get("Credentials", "token")
 	if err != nil {
+		setTokenFromStdin()
+		// pass the error, section maybe already created.
 		_ = config.AddSection("Credentials")
-		err = config.Set("Credentials", "token", "<INSERT HERE YOUR DISCORD BOT API TOKEN>")
+		err = config.Set("Credentials", "token", token)
 		if err != nil {
-			log.Fatal("Cannot write in file config.cfg default data: ", err)
+			FatalError("Cannot write in file config.cfg default data: ", err)
 		}
-		log.Println("Enter token in config.cfg")
+
 	}
 	err = config.SaveWithDelimiter("config.cfg", "=")
 	SimpleFatalErrorHandler(err)
 
+}
+
+func setTokenFromStdin() {
+	fmt.Print("Enter token: ")
+	_, err = fmt.Scanf("%s\n", &token)
 }
