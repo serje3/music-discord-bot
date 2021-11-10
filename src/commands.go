@@ -37,7 +37,7 @@ func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, 
 	var channel *discordgo.Channel
 
 	if len(args) > 0 {
-		channel, err = utils.GetChannelByName(m.GuildID, args[0])
+		channel, err = utils.GetChannelByName(m.GuildID, strings.Join(args, " "))
 	} else {
 		if voiceState, err := s.State.VoiceState(m.GuildID, m.Author.ID); err == nil {
 			channel, err = s.Channel(voiceState.ChannelID)
