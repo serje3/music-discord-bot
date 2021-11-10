@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"reflect"
@@ -19,7 +20,7 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 	method := reflect.ValueOf(&commands).MethodByName(commandName)
 
 	if method.IsValid() {
-		method.Call(
+		go method.Call(
 			[]reflect.Value{
 				reflect.ValueOf(s),
 				reflect.ValueOf(m),
@@ -32,7 +33,7 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 
 // commands list
 
-func (command Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, args commandArgs) {
+func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, args commandArgs) {
 	var channel *discordgo.Channel
 
 	if len(args) > 0 {
@@ -58,8 +59,15 @@ func (command Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, a
 	}
 }
 
-func (command Commands) Stop(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
-	err := bot.actions.quitVoiceChannel(m.GuildID)
+func (command *Commands) Stop(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	var err error
+	bot.session.RLock()
+	if voiceConnection, ok := bot.session.VoiceConnections[m.GuildID]; ok && voiceConnection.Ready {
+		err = bot.actions.quitVoiceChannel(m.GuildID)
+	} else {
+		err = errors.New("cannot quit channel, which u not connected")
+	}
+	bot.session.RUnlock()
 
 	if err != nil {
 		bot.actions.sendChannelMessage(m.ChannelID, "Не получается:(")
