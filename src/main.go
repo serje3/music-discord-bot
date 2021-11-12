@@ -19,6 +19,13 @@ func init() {
 
 	// only in development
 	// setTokenFromFlag()
+
+	youtubeClient.init()
+
+	err := os.Mkdir(AUDIO_FOLDER, os.ModePerm)
+	if !os.IsExist(err) {
+		SimpleFatalErrorHandler(err)
+	}
 }
 
 func main() {

@@ -6,3 +6,7 @@ package main
 */
 
 const COMMAND_PREFIX = "!"
+
+const AUDIO_FOLDER = "audio/"
+
+const DEVELOPER_KEY = "AIzaSyAwYflXY0l8r5PNplzFYVuUcN13rtJRGXs"
