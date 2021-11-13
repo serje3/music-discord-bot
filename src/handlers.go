@@ -17,7 +17,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	if strings.HasPrefix(m.Content, COMMAND_PREFIX) {
+	if strings.HasPrefix(m.Content, commandPrefix) {
 		DiscordExecuteCommand(m.Content[1:], s, m)
 	}
 }

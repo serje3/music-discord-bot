@@ -26,7 +26,7 @@ var youtubeClient YoutubeAPI
 
 func (yt *YoutubeAPI) init() {
 	yt.ctx = context.Background()
-	yt.service, _ = youtube.NewService(yt.ctx, option.WithAPIKey(DEVELOPER_KEY))
+	yt.service, _ = youtube.NewService(yt.ctx, option.WithAPIKey(developerKey))
 	SimpleFatalErrorHandler(err)
 	yt.client = YT.Client{}
 

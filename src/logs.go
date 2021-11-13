@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -34,4 +35,12 @@ func FatalError(v ...interface{}) {
 	log.Println(v...)
 	CloseLogFile()
 	os.Exit(-1)
+}
+
+func EndProgramWithMessage(message string) {
+	fmt.Println(message)
+	fmt.Println("Please configure config.cfg")
+	fmt.Println("Press the Enter Key to terminate the program")
+	_, _ = fmt.Scanln() // wait for Enter Key
+	FatalError()
 }

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/serje3/dgvoice"
+	"log"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -38,7 +40,13 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 					reflect.ValueOf(m),
 					reflect.ValueOf(arrayArgs[1:]),
 				})
-			bot.actions.deleteChannelMessages(m.ChannelID, m.ID)
+			if removeIt, err := strconv.ParseBool(executeCommandMsgDelete); removeIt {
+				if err != nil {
+					log.Println("Cannot parse COMMAND_EXECUTE_MSG_DELETE value. Its must be bool (True or False)")
+				} else {
+					bot.actions.deleteChannelMessages(m.ChannelID, m.ID)
+				}
+			}
 		}()
 	} else {
 		bot.actions.sendChannelMessage(m.ChannelID, "[**Ошибка**] Такой команды нет")
@@ -47,8 +55,8 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 
 // commands list
 
-func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, args commandArgs) {
-	channel, err := command.utils.GetChannel(s, m, args)
+func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, channelName commandArgs) {
+	channel, err := command.utils.GetChannel(s, m, channelName)
 
 	err = bot.actions.joinVoiceChannel(m.GuildID, channel.ID)
 
@@ -96,5 +104,6 @@ func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, 
 		m.ChannelID,
 		"[**Музыка**] "+videoDetails.Name+"\n"+youtubeVideoUrlPattern+videoDetails.ID,
 	)
-	dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
+
+	go dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
 }
