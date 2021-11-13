@@ -142,8 +142,8 @@ func (command *Commands) Help(s *discordgo.Session, m *discordgo.MessageCreate, 
 	embed.Color = 0x3dea1a
 
 	embed.Footer = &discordgo.MessageEmbedFooter{
-		Text:    "Developer: https://github.com/serje3",
-		IconURL: "https://avatars.githubusercontent.com/u/45072630?v=4",
+		Text:    "Dev: serje322#4196; Github: serje3",
+		IconURL: "https://cdn.discordapp.com/avatars/263430624080035841/99b51ce89e05651f82910e13bec8e2b0.png",
 	}
 
 	_, err = s.ChannelMessageSendEmbed(m.ChannelID, embed)
