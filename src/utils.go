@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/bwmarrin/discordgo"
+	"github.com/kkdai/youtube/v2"
 )
 
 type Utils struct{}
@@ -27,4 +28,18 @@ func (_ Utils) GetChannelByName(gID string, channelName string) (channel *discor
 		return channel, errors.New("channel not found")
 	}
 
+}
+
+func (_ Utils) findAudioFormat(formats youtube.FormatList) *youtube.Format {
+	var audioFormat *youtube.Format
+	var audioFormats youtube.FormatList
+
+	audioFormats = formats.Type("audio")
+
+	if len(audioFormats) > 0 {
+		audioFormats.Sort()
+		audioFormat = &audioFormats[0]
+	}
+
+	return audioFormat
 }

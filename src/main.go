@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/bigkevmcd/go-configparser"
 	"os"
@@ -19,6 +18,8 @@ func init() {
 
 	// only in development
 	// setTokenFromFlag()
+
+	youtubeClient.init()
 }
 
 func main() {
@@ -32,11 +33,6 @@ func main() {
 		bot.DiscordConnect()
 	}
 
-}
-
-func setTokenFromFlag() {
-	flag.StringVar(&token, "t", "", "Insert your Discord bot token here")
-	flag.Parse()
 }
 
 func setTokenFromConfig() {

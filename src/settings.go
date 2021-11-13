@@ -6,3 +6,5 @@ package main
 */
 
 const COMMAND_PREFIX = "!"
+
+const DEVELOPER_KEY = "<DEVELOPER_KEY>"

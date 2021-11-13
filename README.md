@@ -1,5 +1,5 @@
 Music discord bot by serje3
----
+===
 
 ### Description
 
@@ -16,6 +16,7 @@ Music discord bot by serje3
 ### Technologies
 - [Go](https://golang.org/)
 - [bwmarrin/discordgo](https://github.com/bwmarrin/discordgo)
+- [kkday/youtube](https://github.com/kkdai/youtube)
 
 ### Contact me
 [![LinkedIn Badge](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/serje3/) 

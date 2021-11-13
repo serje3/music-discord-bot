@@ -4,15 +4,25 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"github.com/serje3/dgvoice"
 	"reflect"
 	"strings"
 )
 
-type Commands struct{}
+type Commands struct {
+	errors CommandErrors
+	utils  CommandUtils
+}
 
 type commandArgs []string
 
 var commands Commands
+
+type GuildVars struct {
+	stopMusic chan bool
+}
+
+var guildsInfo map[string]GuildVars
 
 func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	arrayArgs := strings.Split(commandArgs, " ")
@@ -20,12 +30,16 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 	method := reflect.ValueOf(&commands).MethodByName(commandName)
 
 	if method.IsValid() {
-		go method.Call(
-			[]reflect.Value{
-				reflect.ValueOf(s),
-				reflect.ValueOf(m),
-				reflect.ValueOf(arrayArgs[1:]),
-			})
+		fmt.Println(method.String())
+		go func() {
+			method.Call(
+				[]reflect.Value{
+					reflect.ValueOf(s),
+					reflect.ValueOf(m),
+					reflect.ValueOf(arrayArgs[1:]),
+				})
+			bot.actions.deleteChannelMessages(m.ChannelID, m.ID)
+		}()
 	} else {
 		bot.actions.sendChannelMessage(m.ChannelID, "[**Ошибка**] Такой команды нет")
 	}
@@ -34,20 +48,7 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 // commands list
 
 func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, args commandArgs) {
-	var channel *discordgo.Channel
-
-	if len(args) > 0 {
-		channel, err = utils.GetChannelByName(m.GuildID, strings.Join(args, " "))
-	} else {
-		if voiceState, err := s.State.VoiceState(m.GuildID, m.Author.ID); err == nil {
-			channel, err = s.Channel(voiceState.ChannelID)
-		}
-	}
-
-	if channel == nil || err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, "Голосовой канал не найден")
-		return
-	}
+	channel, err := command.utils.GetChannel(s, m, args)
 
 	err = bot.actions.joinVoiceChannel(m.GuildID, channel.ID)
 
@@ -59,18 +60,41 @@ func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, 
 	}
 }
 
-func (command *Commands) Stop(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
-	var err error
-	bot.session.RLock()
-	if voiceConnection, ok := bot.session.VoiceConnections[m.GuildID]; ok && voiceConnection.Ready {
+func (command *Commands) Stop(s *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	go func() {
+		guildsInfo[m.GuildID].stopMusic <- true
+	}()
+
+	if voiceConnection, ok := command.utils.GetVoiceConnection(s, m); ok && voiceConnection.Ready {
 		err = bot.actions.quitVoiceChannel(m.GuildID)
 	} else {
-		err = errors.New("cannot quit channel, which u not connected")
+		err = errors.New("i cannot leave a channel to which you are not connected")
 	}
-	bot.session.RUnlock()
 
-	if err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, "Не получается:(")
+	commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получается:(", err)
+
+}
+
+func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, searchTextArgs commandArgs) {
+	query := strings.Join(searchTextArgs, " ")
+
+	voiceConnection, ok := command.utils.GetVoiceConnectionsOrJoin(s, m)
+	if !ok {
 		return
 	}
+
+	videoDetails, err := youtubeClient.GetVideoDetails(query)
+	if commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получилось получить информацию о видео", err) {
+		return
+	}
+
+	url, err := videoDetails.GetAudioPath()
+	if commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получилось получить информацию о аудио", err) {
+		return
+	}
+	bot.actions.sendChannelMessage(
+		m.ChannelID,
+		"[**Музыка**] "+videoDetails.Name+"\n"+youtubeVideoUrlPattern+videoDetails.ID,
+	)
+	dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
 }
