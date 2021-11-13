@@ -74,7 +74,7 @@ func (command *Commands) Stop(s *discordgo.Session, m *discordgo.MessageCreate, 
 	}()
 
 	if voiceConnection, ok := command.utils.GetVoiceConnection(s, m); ok && voiceConnection.Ready {
-		err := voiceConnection.Speaking(false)
+		err = voiceConnection.Speaking(false)
 		if err != nil {
 			fmt.Println(err)
 			return
