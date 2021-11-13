@@ -30,7 +30,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func Ready(s *discordgo.Session, _ *discordgo.Ready) {
 	fmt.Println("Ready event called")
-	guildsInfo = make(map[string]GuildVars)
 
 	// bad idea, but the only one...
 	go func() {

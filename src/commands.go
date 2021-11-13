@@ -24,7 +24,7 @@ type GuildVars struct {
 	stopMusic chan bool
 }
 
-var guildsInfo map[string]GuildVars
+var guildsInfo = make(map[string]GuildVars)
 
 func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	arrayArgs := strings.Split(commandArgs, " ")
