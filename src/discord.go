@@ -22,7 +22,6 @@ var err error
 
 func (bot *Bot) DiscordConnect() {
 	bot.session, err = discordgo.New("Bot " + token)
-	bot.session.LogLevel = discordgo.LogDebug
 	if err != nil {
 		return
 	}

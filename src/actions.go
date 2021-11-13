@@ -22,7 +22,7 @@ func (action BotActions) joinVoiceChannel(gID, cID string) (err error) {
 
 	if err != nil {
 		if _, ok := bot.session.VoiceConnections[gID]; ok {
-			fmt.Println(err)
+			log.Println(err)
 			_ = bot.session.VoiceConnections[gID]
 		} else {
 			log.Println(err)
@@ -52,9 +52,9 @@ func (action BotActions) deleteChannelMessages(cID, message string) bool {
 	err := bot.session.ChannelMessageDelete(cID, message)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return false
 	}
-	fmt.Println("Deleted")
+	fmt.Println("Deleted msg id:")
 	return true
 }
