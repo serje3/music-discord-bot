@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,7 +22,7 @@ var err error
 
 func (bot *Bot) DiscordConnect() {
 	bot.session, err = discordgo.New("Bot " + token)
-
+	bot.session.LogLevel = discordgo.LogDebug
 	if err != nil {
 		return
 	}
@@ -51,5 +52,9 @@ func (bot *Bot) DiscordOpenWebsocket() {
 }
 
 func (bot *Bot) DiscordCloseWebsocket() {
-	bot.session.Close()
+	err := bot.session.Close()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }

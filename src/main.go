@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/bigkevmcd/go-configparser"
 	"os"
@@ -21,11 +20,6 @@ func init() {
 	// setTokenFromFlag()
 
 	youtubeClient.init()
-
-	err := os.Mkdir(AUDIO_FOLDER, os.ModePerm)
-	if !os.IsExist(err) {
-		SimpleFatalErrorHandler(err)
-	}
 }
 
 func main() {
@@ -39,11 +33,6 @@ func main() {
 		bot.DiscordConnect()
 	}
 
-}
-
-func setTokenFromFlag() {
-	flag.StringVar(&token, "t", "", "Insert your Discord bot token here")
-	flag.Parse()
 }
 
 func setTokenFromConfig() {
