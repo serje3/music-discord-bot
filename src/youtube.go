@@ -4,19 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jonas747/dca"
 	YT "github.com/kkdai/youtube/v2"
-	"github.com/kkdai/youtube/v2/downloader"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
-	"io"
-	"log"
-	"mime"
-	"os"
-	"path/filepath"
 )
-
-type Downloader downloader.Downloader
 
 type YoutubeAPI struct {
 	ctx     context.Context
@@ -29,22 +20,7 @@ type YoutubeVideoDetails struct {
 	ID   string
 }
 
-const defaultExtension = ".mp3"
-
-//.aac	audio/aac
-//.mp3	audio/mpeg
-//.oga	audio/ogg
-//.opus	audio/opus
-//.wav	audio/wav
-//.weba	audio/webm
-var canonicals = map[string]string{
-	"audio/mp4":  ".m4a",
-	"audio/aac":  ".aac",
-	"audio/mpeg": ".mp3",
-	"audio/ogg":  ".oga",
-	"audio/opus": ".wav",
-	"audio/webm": ".weba",
-}
+const youtubeVideoUrlPattern = "https://www.youtube.com/watch?v="
 
 var youtubeClient YoutubeAPI
 
@@ -77,104 +53,37 @@ func (yt *YoutubeAPI) GetVideo(url string) (*YT.Video, error) {
 	return video, err
 }
 
-func (yt *YoutubeAPI) DownloadAudio(url string) (string, error) {
-	v, err := yt.GetVideo(url)
-
-	audioFormat := findAudioFormat(v.Formats)
-	if audioFormat == nil {
-		return "", errors.New("audio format not found")
-	}
-
-	stream, err := yt.client.GetStreamURL(v, audioFormat)
-	log.Printf("Stream url: %s", stream)
-
-	log.Printf("Title '%s' - Audio Codec '%s'", v.Title, audioFormat.MimeType)
-
-	destFile, err := yt.getOutputFile(v, audioFormat)
-	if err != nil {
-		return "", err
-	}
-
-	// Create audio file
-	audioFile, err := os.Create(destFile)
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("Downloading audio file...")
-	err = yt.videoDLWorker(audioFile, v, audioFormat)
-	if err != nil {
-		return "", err
-	}
-
-	return destFile, err
-}
-
-func (yt *YoutubeAPI) getOutputFile(v *YT.Video, format *YT.Format) (string, error) {
-	outputFile := downloader.SanitizeFilename(v.ID)
-	outputFile += pickIdealFileExtension(format.MimeType)
-
-	if AUDIO_FOLDER != "" {
-		if err := os.MkdirAll(AUDIO_FOLDER, 0o755); err != nil {
-			return "", err
-		}
-		outputFile = filepath.Join(AUDIO_FOLDER, outputFile)
-	}
-
-	return outputFile, nil
-}
-
-func pickIdealFileExtension(mediaType string) string {
-	mediaType, _, err = mime.ParseMediaType(mediaType)
-	if err != nil {
-		return defaultExtension
-	}
-
-	if extension, ok := canonicals[mediaType]; ok {
-		return extension
-	}
-
-	// Our last resort is to ask the operating system, but these give multiple results and are rarely canonical.
-	extensions, err := mime.ExtensionsByType(mediaType)
-	if err != nil || extensions == nil {
-		return defaultExtension
-	}
-
-	return extensions[0]
-}
-
-func (yt *YoutubeAPI) videoDLWorker(out *os.File, video *YT.Video, format *YT.Format) error {
-	stream, _, err := yt.client.GetStreamContext(yt.ctx, video, format)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(out, stream)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (yt *YoutubeAPI) StreamAudioCreate(link string) (string, *dca.EncodeOptions, error) {
-	options := dca.StdEncodeOptions
-	options.RawOutput = true
-	options.Bitrate = 96
-	options.Application = "lowdelay"
-
+func (yt *YoutubeAPI) GetStreamURL(link string) (string, error) {
 	video, err := yt.GetVideo(link)
 	if err != nil {
 		// Handle the error
-		return "", options, err
+		return "", err
 	}
 
-	format := findAudioFormat(video.Formats)
+	format := utils.findAudioFormat(video.Formats)
 	streamURL, err := yt.client.GetStreamURL(video, format)
 	if err != nil {
 		fmt.Println("no stream url received")
-		return streamURL, options, err
+		return streamURL, err
 	}
 
-	return streamURL, options, err
+	return streamURL, err
+}
+
+func (yt *YoutubeAPI) GetVideoDetails(query string) (YoutubeVideoDetails, error) {
+	videoDetails, err := youtubeClient.searchVideo(query)
+	if err != nil {
+		fmt.Println("Fails here 1")
+	} else if videoDetails.ID == "" {
+		err = errors.New("got zero search results")
+	}
+	return videoDetails, err
+}
+
+func (videoDetails YoutubeVideoDetails) GetAudioPath() (url string, err error) {
+	url = youtubeVideoUrlPattern + videoDetails.ID
+
+	url, err = youtubeClient.GetStreamURL(url)
+
+	return url, err
 }

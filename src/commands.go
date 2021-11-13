@@ -4,15 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/jonas747/dca"
-	"io"
-	"log"
+	"github.com/serje3/dgvoice"
 	"reflect"
 	"strings"
-	"time"
 )
 
-type Commands struct{}
+type Commands struct {
+	errors CommandErrors
+	utils  CommandUtils
+}
 
 type commandArgs []string
 
@@ -30,7 +30,7 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 	method := reflect.ValueOf(&commands).MethodByName(commandName)
 
 	if method.IsValid() {
-		go method.Call(
+		method.Call(
 			[]reflect.Value{
 				reflect.ValueOf(s),
 				reflect.ValueOf(m),
@@ -43,116 +43,50 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 
 // commands list
 
-func (command Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, args commandArgs) {
-	var channel *discordgo.Channel
-
+func (command Commands) Join(_ *discordgo.Session, m *discordgo.MessageCreate, args commandArgs) {
+	var ok bool
 	if len(args) > 0 {
-		channel, err = utils.GetChannelByName(m.GuildID, strings.Join(args, " "))
+		ok = command.utils.JoinByChannelName(m, strings.Join(args, " "))
 	} else {
-		if voiceState, err := s.State.VoiceState(m.GuildID, m.Author.ID); err == nil {
-			channel, err = s.Channel(voiceState.ChannelID)
-		}
+		ok = command.utils.JoinByVoiceState(m)
 	}
 
-	if channel == nil || err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, "Голосовой канал не найден")
-		return
-	}
+	fmt.Println(ok)
 
-	err = bot.actions.joinVoiceChannel(m.GuildID, channel.ID)
-
-	if err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, "Не удалось подключиться к голосовому каналу")
-	} else {
-		bot.actions.sendChannelMessage(m.ChannelID,
-			fmt.Sprintf("Я присоединился к вашему каналу **%v**", channel.Name))
-	}
+	//bot.actions.deleteChannelMessages(m.ChannelID, m.ID)
 }
 
 func (command Commands) Stop(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
-	var err error
 	guildsInfo[m.GuildID].stopMusic <- true
 
-	bot.session.RLock()
-	if voiceConnection, ok := bot.session.VoiceConnections[m.GuildID]; ok && voiceConnection.Ready {
+	if voiceConnection, ok := command.utils.GetVoiceConnection(m); ok && voiceConnection.Ready {
 		err = bot.actions.quitVoiceChannel(m.GuildID)
 	} else {
-		err = errors.New("cannot quit channel, which u not connected")
+		err = errors.New("i cannot leave a channel to which you are not connected")
 	}
-	bot.session.RUnlock()
 
-	if err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, "Не получается:(")
-		return
-	}
+	commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получается:(", err)
+	//bot.actions.deleteChannelMessages(m.ChannelID, m.ID)
 }
 
-func (command Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, searchTextArgs commandArgs) {
-	voiceConnection, ok := bot.session.VoiceConnections[m.GuildID]
+func (command Commands) Play(_ *discordgo.Session, m *discordgo.MessageCreate, searchTextArgs commandArgs) {
+	query := strings.Join(searchTextArgs, " ")
+
+	voiceConnection, ok := command.utils.GetVoiceConnectionsOrJoin(m)
 	if !ok {
-		command.Join(s, m, searchTextArgs)
-		if voiceConnection, ok = bot.session.VoiceConnections[m.GuildID]; !ok {
-			bot.actions.sendChannelMessage(m.ChannelID, "Не получается:( Ты должен быть в голосовом канале")
-			return
-		}
-	}
-
-	url, err := utils.GetAudioURL(strings.Join(searchTextArgs, " "), false)
-	if err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, err.Error())
 		return
 	}
 
-	streamUrl, options, err := youtubeClient.StreamAudioCreate(url)
-	if err != nil {
-		bot.actions.sendChannelMessage(m.ChannelID, err.Error())
+	videoDetails, err := youtubeClient.GetVideoDetails(query)
+	if commandErrors.SimpleCommandErrorCheck(m.ChannelID, err.Error(), err) {
 		return
 	}
-	PlayAudioStream(voiceConnection, streamUrl, options, guildsInfo[m.GuildID].stopMusic)
-	//PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
-	bot.actions.sendChannelMessage(m.ChannelID, "работает???")
 
-}
-
-func PlayAudioStream(voiceConnection *discordgo.VoiceConnection, url string, options *dca.EncodeOptions, music chan bool) {
-	log.Println(url)
-	encodingSession, err := dca.EncodeFile("audio/yAF9XlluONA.webm", options)
-
-	if err != nil {
-		// Handle the error
-		fmt.Println(err)
+	url, err := videoDetails.GetAudioPath()
+	if commandErrors.SimpleCommandErrorCheck(m.ChannelID, err.Error(), err) {
 		return
 	}
-	defer encodingSession.Cleanup()
-
-	done := make(chan error)
-	streamingSessiong := dca.NewStream(encodingSession, voiceConnection, done)
-	defer func() {
-		finished, err := streamingSessiong.Finished()
-		if err != nil {
-			return
-		}
-		fmt.Println("ЗАКОНЧИЛОСЬ - ", finished)
-	}()
-
-	streamingSessiong.SetPaused(false)
-	ticker := time.NewTicker(time.Second)
-
-	for {
-		select {
-		case err := <-done:
-			if err != nil && err != io.EOF {
-				log.Fatal("An error occured", err)
-			}
-
-			// Clean up incase something happened and ffmpeg is still running
-			encodingSession.Truncate()
-			return
-		case <-ticker.C:
-			stats := encodingSession.Stats()
-			playbackPosition := streamingSessiong.PlaybackPosition()
-
-			fmt.Printf("Playback: %10s, Transcode Stats: Time: %5s, Size: %5dkB, Bitrate: %6.2fkB, Speed: %5.1fx\r", playbackPosition, stats.Duration.String(), stats.Size, stats.Bitrate, stats.Speed)
-		}
-	}
+	bot.actions.sendChannelMessage(m.ChannelID, "[**Музыка**]"+videoDetails.Name+"\n"+youtubeVideoUrlPattern+videoDetails.ID)
+	dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
+	//bot.actions.deleteChannelMessages(m.ChannelID, m.ID)
 }

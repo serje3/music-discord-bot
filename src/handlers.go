@@ -22,10 +22,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func Ready(s *discordgo.Session, r *discordgo.Ready) {
+func Ready(_ *discordgo.Session, r *discordgo.Ready) {
 	fmt.Println("Ready event called")
 	guildsInfo = make(map[string]GuildVars)
 	for _, guild := range r.Guilds {
-		guildsInfo[guild.ID] = GuildVars{}
+		guildsInfo[guild.ID] = GuildVars{
+			make(chan bool),
+		}
 	}
 }
