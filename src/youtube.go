@@ -7,6 +7,7 @@ import (
 	YT "github.com/kkdai/youtube/v2"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
+	"strings"
 )
 
 type YoutubeAPI struct {
@@ -16,8 +17,9 @@ type YoutubeAPI struct {
 }
 
 type YoutubeVideoDetails struct {
-	Name string
-	ID   string
+	Name      string
+	ID        string
+	Thumbnail string
 }
 
 const youtubeVideoUrlPattern = "https://www.youtube.com/watch?v="
@@ -32,20 +34,43 @@ func (yt *YoutubeAPI) init() {
 
 }
 
-func (yt YoutubeAPI) searchVideo(query string) (video YoutubeVideoDetails, err error) {
-	call := yt.service.Search.List([]string{"id", "snippet"}).
-		Q(query).
-		MaxResults(2)
-	response, err := call.Do()
-	if err != nil {
-		return
+func (yt YoutubeAPI) searchVideo(query string) (YoutubeVideoDetails, error) {
+	// refactor later
+	query = strings.TrimSpace(query)
+	if strings.HasPrefix(youtubeVideoUrlPattern, query) {
+		fmt.Println("legit")
+		call := yt.service.Videos.List([]string{"id", "snippet"}).Id(query[len(youtubeVideoUrlPattern)-1:])
+		response, err := call.Do()
+		if err != nil {
+			fmt.Println(err)
+			return YoutubeVideoDetails{}, err
+		}
+
+		video := YoutubeVideoDetails{
+			Name:      response.Items[0].Snippet.Title,
+			ID:        response.Items[0].Id,
+			Thumbnail: response.Items[0].Snippet.Thumbnails.High.Url,
+		}
+		return video, err
+	} else {
+		call := yt.service.Search.List([]string{"id", "snippet"}).
+			Q(query).
+			MaxResults(2)
+		response, err := call.Do()
+		if err != nil {
+			fmt.Println(err)
+			return YoutubeVideoDetails{}, err
+		}
+
+		video := YoutubeVideoDetails{
+			Name:      response.Items[0].Snippet.Title,
+			ID:        response.Items[0].Id.VideoId,
+			Thumbnail: response.Items[0].Snippet.Thumbnails.High.Url,
+		}
+
+		return video, err
 	}
 
-	video = YoutubeVideoDetails{
-		Name: response.Items[0].Snippet.Title,
-		ID:   response.Items[0].Id.VideoId,
-	}
-	return
 }
 
 func (yt *YoutubeAPI) GetVideo(url string) (*YT.Video, error) {

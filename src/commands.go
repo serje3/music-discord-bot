@@ -74,13 +74,17 @@ func (command *Commands) Stop(s *discordgo.Session, m *discordgo.MessageCreate, 
 	}()
 
 	if voiceConnection, ok := command.utils.GetVoiceConnection(s, m); ok && voiceConnection.Ready {
+		err := voiceConnection.Speaking(false)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		err = bot.actions.quitVoiceChannel(m.GuildID)
 	} else {
 		err = errors.New("i cannot leave a channel to which you are not connected")
 	}
 
 	commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получается:(", err)
-
 }
 
 func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, searchTextArgs commandArgs) {
@@ -104,6 +108,46 @@ func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, 
 		m.ChannelID,
 		"[**Музыка**] "+videoDetails.Name+"\n"+youtubeVideoUrlPattern+videoDetails.ID,
 	)
-
 	go dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
+}
+
+func (command *Commands) Help(s *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	var embed *discordgo.MessageEmbed
+	var fields []*discordgo.MessageEmbedField
+	embed = &discordgo.MessageEmbed{}
+	embed.Title = "Help instruction"
+	embed.Description = "I will help you understand how to tolerate me"
+	embed.Author = &discordgo.MessageEmbedAuthor{}
+	embed.Author.Name = "Captain Gopus"
+	embed.Author.URL = "https://github.com/serje3/music-discord-bot"
+	embed.Author.IconURL = "https://i.ibb.co/HVnMfxc/7-Uu-Wz-LWn-HZA.jpg"
+	fields = []*discordgo.MessageEmbedField{
+		{
+			"[Commands] Join to voice channel",
+			"!join <none | channel name>",
+			true,
+		},
+		{
+			"[Commands] Play music to voice channel",
+			"!play <youtube url | search query>",
+			true,
+		},
+		{
+			"[Commands] Stop music player",
+			"!stop <none>",
+			true,
+		},
+	}
+	embed.Fields = fields
+	embed.Color = 0x3dea1a
+
+	embed.Footer = &discordgo.MessageEmbedFooter{
+		Text:    "Developer: https://github.com/serje3",
+		IconURL: "https://avatars.githubusercontent.com/u/45072630?v=4",
+	}
+
+	_, err = s.ChannelMessageSendEmbed(m.ChannelID, embed)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

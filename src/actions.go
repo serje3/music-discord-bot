@@ -50,7 +50,6 @@ func (action BotActions) sendChannelMessage(cID string, content string) *discord
 
 func (action BotActions) deleteChannelMessages(cID, message string) bool {
 	err := bot.session.ChannelMessageDelete(cID, message)
-
 	if err != nil {
 		log.Println(err)
 		return false

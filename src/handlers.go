@@ -3,12 +3,18 @@ package main
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"log"
 	"strings"
+	"time"
 )
+
+var guildsCount = 0
 
 func (bot Bot) DiscordAddHandlers() {
 	bot.session.AddHandler(Ready)
 	bot.session.AddHandler(messageCreate)
+	bot.session.AddHandler(GuildCreate)
+	bot.session.AddHandler(GuildDelete)
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -22,12 +28,38 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func Ready(_ *discordgo.Session, r *discordgo.Ready) {
+func Ready(s *discordgo.Session, _ *discordgo.Ready) {
 	fmt.Println("Ready event called")
 	guildsInfo = make(map[string]GuildVars)
-	for _, guild := range r.Guilds {
-		guildsInfo[guild.ID] = GuildVars{
-			make(chan bool),
+
+	// bad idea, but the only one...
+	go func() {
+		for {
+			time.Sleep(60e+9)
+			err := s.UpdateListeningStatus(fmt.Sprintf("%v guilds", guildsCount))
+			if err != nil {
+				log.Println(err)
+				fmt.Println(err)
+				return
+			}
 		}
+	}()
+}
+
+func GuildCreate(_ *discordgo.Session, g *discordgo.GuildCreate) {
+	guildsInfo[g.ID] = GuildVars{
+		make(chan bool),
+	}
+	guildsCount++
+}
+
+func GuildDelete(s *discordgo.Session, g *discordgo.GuildDelete) {
+	fmt.Println("Delete: ", g.Name)
+	log.Println("Deleted", g.Name)
+	guildsCount--
+	err := s.UpdateListeningStatus(fmt.Sprintf("%v guilds", guildsCount))
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
