@@ -7,6 +7,7 @@ import (
 )
 
 func SetLogOutputToFile() {
+	var err error
 	logfile, err = os.OpenFile("logfile.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 
 	if err != nil {

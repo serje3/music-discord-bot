@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-type CommandUtils struct{}
-
 // GetVoiceConnectionsOrJoin - thread-safe function that checks for the existence
 // and returns a *discordgo.VoiceConnection, or if it does not exist,
 // it executes the join function and checks again

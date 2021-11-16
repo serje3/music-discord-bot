@@ -6,13 +6,6 @@ import (
 	"os"
 )
 
-type Config struct {
-	parser  *configparser.ConfigParser
-	options map[string]map[string]*string
-}
-
-var config Config
-
 // config values
 var (
 	token                   string
@@ -22,6 +15,7 @@ var (
 )
 
 func (cfg *Config) init() {
+	var err error
 	cfg.createConfig()
 
 	cfg.options = map[string]map[string]*string{
@@ -52,6 +46,7 @@ func (cfg *Config) createConfig() {
 }
 
 func (cfg *Config) createDefaultOptionsIfNotExist() {
+	var err error
 	changed := false
 	for section, optionMap := range cfg.options {
 		for option := range optionMap {
@@ -69,6 +64,7 @@ func (cfg *Config) createDefaultOptionsIfNotExist() {
 }
 
 func (cfg *Config) createOption(sectionName, optionName, optionValue string) {
+	var err error
 	// pass the error, section maybe already created.
 	_ = cfg.parser.AddSection(sectionName)
 	err = cfg.parser.Set(sectionName, optionName, optionValue)
@@ -78,6 +74,7 @@ func (cfg *Config) createOption(sectionName, optionName, optionValue string) {
 }
 
 func (cfg *Config) setValuesToVariables() {
+	var err error
 	for sectionName, optionMap := range cfg.options {
 		for optionName, varPointer := range optionMap {
 			*varPointer, err = cfg.parser.Get(sectionName, optionName)

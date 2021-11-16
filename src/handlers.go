@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-var guildsCount = 0
-
 func (bot Bot) DiscordAddHandlers() {
 	bot.session.AddHandler(Ready)
 	bot.session.AddHandler(messageCreate)
@@ -47,14 +45,18 @@ func Ready(s *discordgo.Session, _ *discordgo.Ready) {
 
 func GuildCreate(_ *discordgo.Session, g *discordgo.GuildCreate) {
 	guildsInfo[g.ID] = GuildVars{
-		make(chan bool),
+		speaking:  func() *bool { b := false; return &b }(),
+		stopMusic: make(chan bool),
+		queue: &SongsQueue{
+			make([]Song, 0),
+		},
+		skipSong: make(chan bool),
 	}
 	guildsCount++
 }
 
 func GuildDelete(s *discordgo.Session, g *discordgo.GuildDelete) {
-	fmt.Println("Delete: ", g.Name)
-	log.Println("Deleted", g.Name)
+	log.Println("Deleted", g.ID)
 	guildsCount--
 	err := s.UpdateListeningStatus(fmt.Sprintf("%v guilds", guildsCount))
 	if err != nil {

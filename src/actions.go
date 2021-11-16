@@ -48,6 +48,14 @@ func (action BotActions) sendChannelMessage(cID string, content string) *discord
 	return msg
 }
 
+func (action BotActions) sendChannelMessageEmbed(cID string, embed *discordgo.MessageEmbed) *discordgo.Message {
+	action.checkSession()
+
+	msg, _ := bot.session.ChannelMessageSendEmbed(cID, embed)
+
+	return msg
+}
+
 func (action BotActions) deleteChannelMessages(cID, message string) bool {
 	err := bot.session.ChannelMessageDelete(cID, message)
 	if err != nil {

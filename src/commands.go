@@ -4,27 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/serje3/dgvoice"
 	"log"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
-type Commands struct {
-	errors CommandErrors
-	utils  CommandUtils
-}
-
 type commandArgs []string
-
-var commands Commands
-
-type GuildVars struct {
-	stopMusic chan bool
-}
-
-var guildsInfo = make(map[string]GuildVars)
 
 func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	arrayArgs := strings.Split(commandArgs, " ")
@@ -32,7 +18,7 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 	method := reflect.ValueOf(&commands).MethodByName(commandName)
 
 	if method.IsValid() {
-		fmt.Println(method.String())
+		fmt.Println(commandName)
 		go func() {
 			method.Call(
 				[]reflect.Value{
@@ -69,9 +55,11 @@ func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, 
 }
 
 func (command *Commands) Stop(s *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
-	go func() {
-		guildsInfo[m.GuildID].stopMusic <- true
-	}()
+	guildInfo := guildsInfo[m.GuildID]
+	var err error
+	if *guildInfo.speaking {
+		go func() { guildInfo.stopMusic <- true }()
+	}
 
 	if voiceConnection, ok := command.utils.GetVoiceConnection(s, m); ok && voiceConnection.Ready {
 		err = voiceConnection.Speaking(false)
@@ -87,7 +75,25 @@ func (command *Commands) Stop(s *discordgo.Session, m *discordgo.MessageCreate, 
 	commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получается:(", err)
 }
 
+func (command *Commands) Skip(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	guildInfo := guildsInfo[m.GuildID]
+	if *guildInfo.speaking {
+		guildInfo.skipSong <- true
+		bot.actions.sendChannelMessage(m.ChannelID, "Музыка попущена")
+	} else {
+		bot.actions.sendChannelMessage(m.ChannelID, "нет")
+	}
+}
+
+func (command *Commands) Clear(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	guildInfo := guildsInfo[m.GuildID]
+	guildInfo.queue.Clear()
+	bot.actions.sendChannelMessage(m.ChannelID, "Музыкальный ряд очищен от говна и ссанья")
+}
+
 func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, searchTextArgs commandArgs) {
+	guildInfo := guildsInfo[m.GuildID]
+
 	query := strings.Join(searchTextArgs, " ")
 
 	voiceConnection, ok := command.utils.GetVoiceConnectionsOrJoin(s, m)
@@ -100,54 +106,26 @@ func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, 
 		return
 	}
 
-	url, err := videoDetails.GetAudioPath()
+	url, err := youtubeClient.RequestAudioPath(videoDetails)
+	fmt.Println("Play: stream url: ", url)
+	song := Song{
+		details: videoDetails,
+		stream:  url,
+	}
+
 	if commandErrors.SimpleCommandErrorCheck(m.ChannelID, "Не получилось получить информацию о аудио", err) {
 		return
 	}
-	bot.actions.sendChannelMessage(
-		m.ChannelID,
-		"[**Музыка**] "+videoDetails.Name+"\n"+youtubeVideoUrlPattern+videoDetails.ID,
-	)
-	go dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
+
+	guildInfo.queue.Push(song)
+	bot.actions.sendChannelMessageEmbed(m.ChannelID, songEmbed(videoDetails))
+
+	fmt.Println("Play: speaking: ", *guildInfo.speaking)
+	if !*guildInfo.speaking {
+		PlayQueue(voiceConnection, &guildInfo)
+	}
 }
 
-func (command *Commands) Help(s *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
-	var embed *discordgo.MessageEmbed
-	var fields []*discordgo.MessageEmbedField
-	embed = &discordgo.MessageEmbed{}
-	embed.Title = "Help instruction"
-	embed.Description = "I will help you understand how to tolerate me"
-	embed.Author = &discordgo.MessageEmbedAuthor{}
-	embed.Author.Name = "Captain Gopus"
-	embed.Author.URL = "https://github.com/serje3/music-discord-bot"
-	embed.Author.IconURL = "https://i.ibb.co/HVnMfxc/7-Uu-Wz-LWn-HZA.jpg"
-	fields = []*discordgo.MessageEmbedField{
-		{
-			"[Commands] Join to voice channel",
-			"!join <none | channel name>",
-			true,
-		},
-		{
-			"[Commands] Play music to voice channel",
-			"!play <youtube url | search query>",
-			true,
-		},
-		{
-			"[Commands] Stop music player",
-			"!stop <none>",
-			true,
-		},
-	}
-	embed.Fields = fields
-	embed.Color = 0x3dea1a
-
-	embed.Footer = &discordgo.MessageEmbedFooter{
-		Text:    "Dev: serje322#4196; Github: serje3",
-		IconURL: "https://cdn.discordapp.com/avatars/263430624080035841/99b51ce89e05651f82910e13bec8e2b0.png",
-	}
-
-	_, err = s.ChannelMessageSendEmbed(m.ChannelID, embed)
-	if err != nil {
-		fmt.Println(err)
-	}
+func (command *Commands) Help(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	bot.actions.sendChannelMessageEmbed(m.ChannelID, helpEmbed())
 }

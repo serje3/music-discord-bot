@@ -9,18 +9,8 @@ import (
 	"syscall"
 )
 
-type BotActions struct {
-}
-
-type Bot struct {
-	session *discordgo.Session
-	actions BotActions
-}
-
-var bot Bot
-var err error
-
 func (bot *Bot) DiscordConnect() {
+	var err error
 	bot.session, err = discordgo.New("Bot " + token)
 	if err != nil {
 		return

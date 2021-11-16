@@ -6,10 +6,6 @@ import (
 	"github.com/kkdai/youtube/v2"
 )
 
-type Utils struct{}
-
-var utils Utils
-
 func (_ Utils) GetChannelByName(gID string, channelName string) (channel *discordgo.Channel, err error) {
 	channels, err := bot.session.GuildChannels(gID)
 	if err == nil {

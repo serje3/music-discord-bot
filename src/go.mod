@@ -3,9 +3,11 @@ module serje3/captain-cocker
 go 1.17
 
 require (
+	github.com/AvraamMavridis/randomcolor v0.0.0-20180822172341-208aff70bf2c
 	github.com/bigkevmcd/go-configparser v0.0.0-20210106142102-909504547ead
 	github.com/bwmarrin/discordgo v0.23.2
 	github.com/kkdai/youtube/v2 v2.7.4
+	github.com/serje3/dgvoice v0.0.0-20211112212642-3f9ca48afa25
 	google.golang.org/api v0.60.0
 )
 
@@ -16,7 +18,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/serje3/dgvoice v0.0.0-20211112212642-3f9ca48afa25 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect

@@ -10,25 +10,15 @@ import (
 	"strings"
 )
 
-type YoutubeAPI struct {
-	ctx     context.Context
-	service *youtube.Service
-	client  YT.Client
-}
-
-type YoutubeVideoDetails struct {
-	Name      string
-	ID        string
-	Thumbnail string
-}
-
 const youtubeVideoUrlPattern = "https://www.youtube.com/watch?v="
 
-var youtubeClient YoutubeAPI
-
 func (yt *YoutubeAPI) init() {
+	var err error
 	yt.ctx = context.Background()
-	yt.service, _ = youtube.NewService(yt.ctx, option.WithAPIKey(developerKey))
+	yt.service, err = youtube.NewService(yt.ctx, option.WithAPIKey(developerKey))
+	if err != nil {
+		return
+	}
 	SimpleFatalErrorHandler(err)
 	yt.client = YT.Client{}
 
@@ -39,33 +29,36 @@ func (yt YoutubeAPI) searchVideo(query string) (YoutubeVideoDetails, error) {
 	query = strings.TrimSpace(query)
 	if strings.HasPrefix(youtubeVideoUrlPattern, query) {
 		fmt.Println("legit")
-		call := yt.service.Videos.List([]string{"id", "snippet"}).Id(query[len(youtubeVideoUrlPattern)-1:])
+		call := yt.service.Videos.List([]string{"id", "snippet"}).
+			Id(query[len(youtubeVideoUrlPattern)-1:])
 		response, err := call.Do()
 		if err != nil {
 			fmt.Println(err)
 			return YoutubeVideoDetails{}, err
 		}
-
 		video := YoutubeVideoDetails{
-			Name:      response.Items[0].Snippet.Title,
-			ID:        response.Items[0].Id,
-			Thumbnail: response.Items[0].Snippet.Thumbnails.High.Url,
+			Name:        response.Items[0].Snippet.Title,
+			ID:          response.Items[0].Id,
+			Thumbnail:   response.Items[0].Snippet.Thumbnails.High.Url,
+			Description: response.Items[0].Snippet.Description,
 		}
 		return video, err
 	} else {
 		call := yt.service.Search.List([]string{"id", "snippet"}).
 			Q(query).
-			MaxResults(2)
+			MaxResults(5)
 		response, err := call.Do()
 		if err != nil {
 			fmt.Println(err)
 			return YoutubeVideoDetails{}, err
 		}
+		responseItem := yt.chooseVideoFromSearchList(response.Items)
 
 		video := YoutubeVideoDetails{
-			Name:      response.Items[0].Snippet.Title,
-			ID:        response.Items[0].Id.VideoId,
-			Thumbnail: response.Items[0].Snippet.Thumbnails.High.Url,
+			Name:        responseItem.Snippet.Title,
+			ID:          responseItem.Id.VideoId,
+			Thumbnail:   responseItem.Snippet.Thumbnails.High.Url,
+			Description: responseItem.Snippet.Description,
 		}
 
 		return video, err
@@ -105,10 +98,19 @@ func (yt *YoutubeAPI) GetVideoDetails(query string) (YoutubeVideoDetails, error)
 	return videoDetails, err
 }
 
-func (videoDetails YoutubeVideoDetails) GetAudioPath() (url string, err error) {
+func (yt *YoutubeAPI) RequestAudioPath(videoDetails YoutubeVideoDetails) (url string, err error) {
 	url = youtubeVideoUrlPattern + videoDetails.ID
 
 	url, err = youtubeClient.GetStreamURL(url)
 
 	return url, err
+}
+
+func (yt *YoutubeAPI) chooseVideoFromSearchList(items []*youtube.SearchResult) *youtube.SearchResult {
+	for _, item := range items {
+		if item.Id.Kind == "youtube#video" {
+			return item
+		}
+	}
+	return items[0]
 }
