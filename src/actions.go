@@ -37,13 +37,20 @@ func (action BotActions) joinVoiceChannel(gID, cID string) (err error) {
 func (action BotActions) quitVoiceChannel(gID string) (err error) {
 	action.checkSession()
 	_, err = bot.session.ChannelVoiceJoin(gID, "", false, false)
+	if err != nil {
+		log.Println(err)
+	}
 	return
 }
 
 func (action BotActions) sendChannelMessage(cID string, content string) *discordgo.Message {
 	action.checkSession()
 
-	msg, _ := bot.session.ChannelMessageSend(cID, content)
+	msg, err := bot.session.ChannelMessageSend(cID, content)
+
+	if err != nil {
+		log.Println(err)
+	}
 
 	return msg
 }

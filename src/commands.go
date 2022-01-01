@@ -126,6 +126,21 @@ func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, 
 	}
 }
 
+func (command *Commands) List(s *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
+	var msgContent string
+	bot.session.RLock()
+	var queueSongs []Song
+	guildInfo := guildsInfo[m.GuildID]
+	queueSongs = guildInfo.queue.songs[:]
+	fmt.Println(queueSongs, guildInfo.queue.songs)
+	bot.session.RUnlock()
+	for i, song := range queueSongs {
+		msgContent += fmt.Sprintf("%d. %s \n", i+1, song.details.Name)
+	}
+	bot.actions.sendChannelMessage(m.ChannelID, msgContent)
+	fmt.Println("List ended")
+}
+
 func (command *Commands) Help(_ *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
 	bot.actions.sendChannelMessageEmbed(m.ChannelID, helpEmbed())
 }

@@ -27,15 +27,16 @@ func (yt *YoutubeAPI) init() {
 func (yt YoutubeAPI) searchVideo(query string) (YoutubeVideoDetails, error) {
 	// refactor later
 	query = strings.TrimSpace(query)
-	if strings.HasPrefix(youtubeVideoUrlPattern, query) {
-		fmt.Println("legit")
+	if strings.HasPrefix(query, youtubeVideoUrlPattern) {
+		fmt.Println(query[len(youtubeVideoUrlPattern):])
 		call := yt.service.Videos.List([]string{"id", "snippet"}).
-			Id(query[len(youtubeVideoUrlPattern)-1:])
+			Id(query[len(youtubeVideoUrlPattern):])
 		response, err := call.Do()
-		if err != nil {
+		if err != nil || response.Items == nil {
 			fmt.Println(err)
 			return YoutubeVideoDetails{}, err
 		}
+		fmt.Println(response)
 		video := YoutubeVideoDetails{
 			Name:        response.Items[0].Snippet.Title,
 			ID:          response.Items[0].Id,
