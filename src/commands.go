@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/serje3/dgvoice"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -24,6 +27,19 @@ type GuildVars struct {
 	stopMusic chan bool
 }
 
+type OpenAIChoice struct {
+	Text  string `json:"text"`
+	Index int    `json:"index"`
+}
+
+type OpenAIResponse struct {
+	Id      string         `json:"id"`
+	Object  string         `json:"object"`
+	Created int            `json:"created"`
+	Model   string         `json:"model"`
+	Choices []OpenAIChoice `json:"choices"`
+}
+
 var guildsInfo = make(map[string]GuildVars)
 
 func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -32,7 +48,6 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 	method := reflect.ValueOf(&commands).MethodByName(commandName)
 
 	if method.IsValid() {
-		fmt.Println(method.String())
 		go func() {
 			method.Call(
 				[]reflect.Value{
@@ -108,7 +123,9 @@ func (command *Commands) Play(s *discordgo.Session, m *discordgo.MessageCreate, 
 		m.ChannelID,
 		"[**Музыка**] "+videoDetails.Name+"\n"+youtubeVideoUrlPattern+videoDetails.ID,
 	)
-	go dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
+	log.Println(url, voiceConnection)
+
+	//go dgvoice.PlayAudioFile(voiceConnection, url, guildsInfo[m.GuildID].stopMusic)
 }
 
 func (command *Commands) Help(s *discordgo.Session, m *discordgo.MessageCreate, _ commandArgs) {
@@ -150,4 +167,78 @@ func (command *Commands) Help(s *discordgo.Session, m *discordgo.MessageCreate, 
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func (command *Commands) Ask(s *discordgo.Session, m *discordgo.MessageCreate, question commandArgs) {
+
+	textQuestion := strings.Join(question, " ")
+
+	log.Println(textQuestion)
+
+	url := "https://api.openai.com/v1/completions"
+
+	// Define the request body
+	//body := json.Marshal({
+	//	"model": "text-davinci-003",
+	//	"prompt": %s,
+	//	"max_tokens": 7,
+	//	"temperature": 0
+	//}, textQuestion)))
+
+	tokens, _ := strconv.Atoi(openAIMaxLength)
+	temp, _ := strconv.Atoi(openAITemp)
+	log.Println(openAITemp, openAIModel, openAIMaxLength)
+	body := map[string]interface{}{
+		"model":       openAIModel,
+		"prompt":      textQuestion,
+		"max_tokens":  tokens,
+		"temperature": temp,
+	}
+
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		log.Printf("could not marshal json: %s\n", err)
+		return
+	}
+
+	// Create a new request with the body
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Add the API key to the request headers
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", openAIToken))
+	req.Header.Add("Content-Type", "application/json")
+
+	// Send the request and get the response
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
+
+	// Read the response body
+	responseBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var answer OpenAIResponse
+
+	err = json.Unmarshal(responseBody, &answer)
+
+	if err != nil {
+		log.Println(err)
+		bot.actions.sendChannelMessage(m.ChannelID, "Упс произошла ошибочька.....")
+		return
+	}
+
+	content := answer.Choices[0].Text
+
+	bot.actions.sendChannelMessage(m.ChannelID, content)
 }

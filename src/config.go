@@ -17,6 +17,10 @@ var config Config
 var (
 	token                   string
 	developerKey            string
+	openAIToken             string
+	openAIMaxLength         string
+	openAIModel             string
+	openAITemp              string
 	commandPrefix           string
 	executeCommandMsgDelete = "false"
 )
@@ -28,10 +32,14 @@ func (cfg *Config) init() {
 		"Credentials": {
 			"TOKEN":         &token,
 			"DEVELOPER_KEY": &developerKey,
+			"CHATGPT_TOKEN": &openAIToken,
 		},
 		"Commands": {
 			"COMMAND_PREFIX":             &commandPrefix,
 			"COMMAND_EXECUTE_MSG_DELETE": &executeCommandMsgDelete,
+			"CHATGPT_MAX_TOKENS":         &openAIMaxLength,
+			"CHATGPT_MODEL":              &openAIModel,
+			"CHATGPT_TEMPERATURE":        &openAITemp,
 		},
 	}
 
