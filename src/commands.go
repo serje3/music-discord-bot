@@ -238,6 +238,10 @@ func (command *Commands) Ask(s *discordgo.Session, m *discordgo.MessageCreate, q
 		return
 	}
 
+	if len(answer.Choices) == 0 {
+		bot.actions.sendChannelMessage(m.ChannelID, "Хз че ответить).....")
+		return
+	}
 	content := answer.Choices[0].Text
 
 	bot.actions.sendChannelMessage(m.ChannelID, content)
