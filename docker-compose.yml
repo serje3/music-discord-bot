@@ -1,7 +1,9 @@
 version: '3'
 services:
   app:
-    image: serje3/cocker:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
     volumes:
       - ./config.cfg:/config.cfg
       - ./logfile.log:/logfile.log
