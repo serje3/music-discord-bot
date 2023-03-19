@@ -72,7 +72,9 @@ func DiscordExecuteCommand(commandArgs string, s *discordgo.Session, m *discordg
 
 func (command *Commands) Join(s *discordgo.Session, m *discordgo.MessageCreate, channelName commandArgs) {
 	channel, err := command.utils.GetChannel(s, m, channelName)
-
+	if channel == nil {
+		return
+	}
 	err = bot.actions.joinVoiceChannel(m.GuildID, channel.ID)
 
 	if err != nil {
